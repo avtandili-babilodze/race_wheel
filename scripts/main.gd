@@ -101,61 +101,75 @@ func _build_track() -> void:
 	var asphalt := StandardMaterial3D.new()
 	asphalt.albedo_color = Color(0.16, 0.16, 0.18)
 	asphalt.roughness = 0.95
+	asphalt.cull_mode = BaseMaterial3D.CULL_DISABLED
 
 	var barrier_mat := StandardMaterial3D.new()
 	barrier_mat.albedo_color = Color(0.85, 0.87, 0.9)
 	barrier_mat.roughness = 0.6
+	barrier_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 
 	var curb_red := StandardMaterial3D.new()
 	curb_red.albedo_color = Color(0.8, 0.1, 0.1)
+	curb_red.cull_mode = BaseMaterial3D.CULL_DISABLED
 
-	var step := 3.0
-	# Generous overlap so segments fanning around the outside of a corner
-	# don't leave gaps.
-	var seg_mesh := BoxMesh.new()
-	seg_mesh.size = Vector3(TRACK_WIDTH, 0.1, step + 2.5)
-	var curb_mesh := BoxMesh.new()
-	curb_mesh.size = Vector3(0.7, 0.14, step + 2.5)
-	var wall_shape := BoxShape3D.new()
-	wall_shape.size = Vector3(0.5, 1.2, step + 3.5)
-	var wall_mesh := BoxMesh.new()
-	wall_mesh.size = wall_shape.size
+	# Sample the whole loop at even intervals; the last sample wraps back to
+	# offset 0 so every ribbon closes seamlessly.
+	var length := _curve.get_baked_length()
+	var count := int(ceil(length / 2.0))
+	var xfs: Array[Transform3D] = []
+	for i in count + 1:
+		xfs.append(_track_transform(length * i / count))
 
-	var count := int(_curve.get_baked_length() / step) + 1
-	for i in count:
-		var xf := _track_transform(i * step)
-		var right := xf.basis.x
+	var half := TRACK_WIDTH / 2.0
+	_add_ribbon(_strip(_rail(xfs, -half, 0.1), _rail(xfs, half, 0.1)), asphalt)
+	for side: float in [-1.0, 1.0]:
+		_add_ribbon(_strip(
+			_rail(xfs, side * (half - 0.7), 0.12),
+			_rail(xfs, side * half, 0.12)), curb_red)
 
-		var seg := MeshInstance3D.new()
-		seg.mesh = seg_mesh
-		seg.material_override = asphalt
-		seg.basis = xf.basis
-		seg.position = xf.origin + Vector3(0, 0.06, 0)
-		add_child(seg)
+	# Walls: inner face, outer face, and top cap per side, all one strip
+	# family, plus a single trimesh collider for everything.
+	var wall_tris := PackedVector3Array()
+	for side: float in [-1.0, 1.0]:
+		var b_in := side * (half + 1.25)
+		var b_out := side * (half + 1.75)
+		var faces := _strip(_rail(xfs, b_in, 0.0), _rail(xfs, b_in, 1.2))
+		faces.append_array(_strip(_rail(xfs, b_out, 0.0), _rail(xfs, b_out, 1.2)))
+		faces.append_array(_strip(_rail(xfs, b_in, 1.2), _rail(xfs, b_out, 1.2)))
+		_add_ribbon(faces, barrier_mat)
+		wall_tris.append_array(faces)
 
-		for side: float in [-1.0, 1.0]:
-			var curb := MeshInstance3D.new()
-			curb.mesh = curb_mesh
-			curb.material_override = curb_red
-			curb.basis = xf.basis
-			curb.position = xf.origin + right * side * (TRACK_WIDTH / 2.0 - 0.35) \
-				+ Vector3(0, 0.08, 0)
-			add_child(curb)
+	var wall_body := StaticBody3D.new()
+	var wall_col := CollisionShape3D.new()
+	var wall_shape := ConcavePolygonShape3D.new()
+	wall_shape.set_faces(wall_tris)
+	wall_shape.backface_collision = true
+	wall_col.shape = wall_shape
+	wall_body.add_child(wall_col)
+	add_child(wall_body)
 
-			var wall := StaticBody3D.new()
-			wall.basis = xf.basis
-			wall.position = xf.origin + right * side * (TRACK_WIDTH / 2.0 + 1.5) \
-				+ Vector3(0, 0.6, 0)
+func _rail(xfs: Array[Transform3D], lateral: float, height: float) -> PackedVector3Array:
+	var pts := PackedVector3Array()
+	for xf in xfs:
+		pts.append(xf.origin + xf.basis.x * lateral + Vector3.UP * height)
+	return pts
 
-			var wall_col := CollisionShape3D.new()
-			wall_col.shape = wall_shape
-			wall.add_child(wall_col)
+func _strip(a: PackedVector3Array, b: PackedVector3Array) -> PackedVector3Array:
+	var tris := PackedVector3Array()
+	for i in a.size() - 1:
+		tris.append_array([a[i], b[i], b[i + 1], a[i], b[i + 1], a[i + 1]])
+	return tris
 
-			var wall_vis := MeshInstance3D.new()
-			wall_vis.mesh = wall_mesh
-			wall_vis.material_override = barrier_mat
-			wall.add_child(wall_vis)
-			add_child(wall)
+func _add_ribbon(tris: PackedVector3Array, mat: Material) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for v in tris:
+		st.add_vertex(v)
+	st.generate_normals()
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = mat
+	add_child(mi)
 
 func _distance_to_track(pos: Vector3) -> float:
 	var best := INF
