@@ -75,8 +75,6 @@ func _build_track() -> void:
 
 	var curb_red := StandardMaterial3D.new()
 	curb_red.albedo_color = Color(0.8, 0.1, 0.1)
-	var curb_white := StandardMaterial3D.new()
-	curb_white.albedo_color = Color(0.92, 0.92, 0.92)
 
 	var seg_len := TAU * TRACK_RADIUS / SEGMENTS + 0.6
 
@@ -103,7 +101,7 @@ func _build_track() -> void:
 			var curb_r := TRACK_RADIUS + side * (TRACK_WIDTH / 2.0 - 0.35)
 			var curb := MeshInstance3D.new()
 			curb.mesh = curb_mesh
-			curb.material_override = curb_red if i % 2 == 0 else curb_white
+			curb.material_override = curb_red
 			curb.position = Vector3(cos(angle) * curb_r, 0.08, sin(angle) * curb_r)
 			curb.rotation.y = -angle
 			add_child(curb)
