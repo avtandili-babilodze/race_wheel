@@ -33,8 +33,10 @@ project uses the GL Compatibility renderer, so it runs on modest hardware.
 
 ## Gameplay
 
+- The track is a closed GP-style circuit — a long start straight, sweepers,
+  esses, a chicane, and a hairpin — generated from a smooth curve.
 - A 3-2-1 countdown starts the race; the lap timer begins on **GO!**
-- Four invisible checkpoint gates around the track must be crossed in order,
+- Six invisible checkpoint gates around the track must be crossed in order,
   so cutting the course or reversing over the line doesn't count.
 - Crossing the start/finish line completes the lap. Your best time is saved
   to `user://best_lap.save` and shown on the HUD.

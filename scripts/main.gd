@@ -1,13 +1,28 @@
 extends Node3D
 
-const TRACK_RADIUS := 60.0
 const TRACK_WIDTH := 14.0
-const SEGMENTS := 96
+
+# Centerline control points (x, z) of the closed circuit; smoothed into a
+# Curve3D. Start/finish is at the first point, driving toward the second.
+const TRACK_POINTS: Array[Vector2] = [
+	Vector2(-80, 100), Vector2(40, 100),    # main straight
+	Vector2(100, 70), Vector2(115, 10),     # turn 1, sweeping right
+	Vector2(75, -35), Vector2(95, -95),     # esses
+	Vector2(25, -110),                      # bottom sweeper
+	Vector2(-25, -65),                      # chicane
+	Vector2(-75, -105),                     # dip
+	Vector2(-125, -65),                     # far hairpin
+	Vector2(-95, -5),                       # inward kink
+	Vector2(-125, 55),                      # final left sweeper
+]
 
 var car: Car
 var hud: Hud
+var _curve := Curve3D.new()
+var _centerline: PackedVector3Array = []
 
 func _ready() -> void:
+	_build_curve()
 	_build_environment()
 	_build_track()
 	_build_scenery()
@@ -15,6 +30,31 @@ func _ready() -> void:
 	_spawn_car()
 	_spawn_hud()
 	_start_countdown()
+
+func _build_curve() -> void:
+	# Catmull-Rom style tangents from neighbours; the first point is repeated
+	# at the end so the loop closes seamlessly.
+	var n := TRACK_POINTS.size()
+	for i in n + 1:
+		var p := TRACK_POINTS[i % n]
+		var prev := TRACK_POINTS[(i - 1 + n) % n]
+		var next := TRACK_POINTS[(i + 1) % n]
+		var tangent := (next - prev) * 0.25
+		var t3 := Vector3(tangent.x, 0, tangent.y)
+		_curve.add_point(Vector3(p.x, 0, p.y), -t3, t3)
+	_curve.bake_interval = 1.0
+	for i in int(_curve.get_baked_length() / 5.0):
+		_centerline.append(_curve.sample_baked(i * 5.0))
+
+func _track_transform(offset: float) -> Transform3D:
+	var length := _curve.get_baked_length()
+	offset = fposmod(offset, length)
+	var pos := _curve.sample_baked(offset)
+	var ahead := _curve.sample_baked(fposmod(offset + 0.5, length))
+	var dir := ahead - pos
+	dir.y = 0.0
+	dir = dir.normalized()
+	return Transform3D(Basis.looking_at(dir, Vector3.UP), pos)
 
 func _build_environment() -> void:
 	var sun := DirectionalLight3D.new()
@@ -48,7 +88,7 @@ func _build_environment() -> void:
 	var ground := StaticBody3D.new()
 	var ground_col := CollisionShape3D.new()
 	var ground_shape := BoxShape3D.new()
-	ground_shape.size = Vector3(500, 1, 500)
+	ground_shape.size = Vector3(600, 1, 600)
 	ground_col.shape = ground_shape
 	ground_col.position = Vector3(0, -0.5, 0)
 	ground.add_child(ground_col)
@@ -58,7 +98,7 @@ func _build_environment() -> void:
 	grass_mat.roughness = 1.0
 	var ground_mesh := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(500, 500)
+	plane.size = Vector2(600, 600)
 	ground_mesh.mesh = plane
 	ground_mesh.material_override = grass_mat
 	ground.add_child(ground_mesh)
@@ -76,40 +116,43 @@ func _build_track() -> void:
 	var curb_red := StandardMaterial3D.new()
 	curb_red.albedo_color = Color(0.8, 0.1, 0.1)
 
-	var seg_len := TAU * TRACK_RADIUS / SEGMENTS + 0.6
-
+	var step := 3.0
+	# Generous overlap so segments fanning around the outside of a corner
+	# don't leave gaps.
 	var seg_mesh := BoxMesh.new()
-	seg_mesh.size = Vector3(TRACK_WIDTH, 0.1, seg_len)
+	seg_mesh.size = Vector3(TRACK_WIDTH, 0.1, step + 2.5)
 	var curb_mesh := BoxMesh.new()
-	curb_mesh.size = Vector3(0.7, 0.14, seg_len)
+	curb_mesh.size = Vector3(0.7, 0.14, step + 2.5)
 	var wall_shape := BoxShape3D.new()
-	wall_shape.size = Vector3(0.5, 1.2, seg_len + 1.2)
+	wall_shape.size = Vector3(0.5, 1.2, step + 3.5)
 	var wall_mesh := BoxMesh.new()
 	wall_mesh.size = wall_shape.size
 
-	for i in SEGMENTS:
-		var angle := TAU * i / SEGMENTS
+	var count := int(_curve.get_baked_length() / step) + 1
+	for i in count:
+		var xf := _track_transform(i * step)
+		var right := xf.basis.x
 
 		var seg := MeshInstance3D.new()
 		seg.mesh = seg_mesh
 		seg.material_override = asphalt
-		seg.position = Vector3(cos(angle) * TRACK_RADIUS, 0.06, sin(angle) * TRACK_RADIUS)
-		seg.rotation.y = -angle
+		seg.basis = xf.basis
+		seg.position = xf.origin + Vector3(0, 0.06, 0)
 		add_child(seg)
 
 		for side: float in [-1.0, 1.0]:
-			var curb_r := TRACK_RADIUS + side * (TRACK_WIDTH / 2.0 - 0.35)
 			var curb := MeshInstance3D.new()
 			curb.mesh = curb_mesh
 			curb.material_override = curb_red
-			curb.position = Vector3(cos(angle) * curb_r, 0.08, sin(angle) * curb_r)
-			curb.rotation.y = -angle
+			curb.basis = xf.basis
+			curb.position = xf.origin + right * side * (TRACK_WIDTH / 2.0 - 0.35) \
+				+ Vector3(0, 0.08, 0)
 			add_child(curb)
 
-			var wall_r := TRACK_RADIUS + side * (TRACK_WIDTH / 2.0 + 1.5)
 			var wall := StaticBody3D.new()
-			wall.position = Vector3(cos(angle) * wall_r, 0.6, sin(angle) * wall_r)
-			wall.rotation.y = -angle
+			wall.basis = xf.basis
+			wall.position = xf.origin + right * side * (TRACK_WIDTH / 2.0 + 1.5) \
+				+ Vector3(0, 0.6, 0)
 
 			var wall_col := CollisionShape3D.new()
 			wall_col.shape = wall_shape
@@ -120,6 +163,12 @@ func _build_track() -> void:
 			wall_vis.material_override = barrier_mat
 			wall.add_child(wall_vis)
 			add_child(wall)
+
+func _distance_to_track(pos: Vector3) -> float:
+	var best := INF
+	for p in _centerline:
+		best = minf(best, Vector2(p.x, p.z).distance_to(Vector2(pos.x, pos.z)))
+	return best
 
 func _build_scenery() -> void:
 	var trunk_mat := StandardMaterial3D.new()
@@ -138,14 +187,14 @@ func _build_scenery() -> void:
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
-	for i in 40:
-		var angle := rng.randf() * TAU
-		var r: float
-		if rng.randf() < 0.4:
-			r = rng.randf_range(10.0, TRACK_RADIUS - TRACK_WIDTH)
-		else:
-			r = rng.randf_range(TRACK_RADIUS + TRACK_WIDTH, 200.0)
-		var pos := Vector3(cos(angle) * r, 0, sin(angle) * r)
+	var placed := 0
+	var attempts := 0
+	while placed < 60 and attempts < 400:
+		attempts += 1
+		var pos := Vector3(rng.randf_range(-250, 250), 0, rng.randf_range(-250, 250))
+		if _distance_to_track(pos) < TRACK_WIDTH / 2.0 + 6.0:
+			continue
+		placed += 1
 		var scale_factor := rng.randf_range(0.8, 1.6)
 
 		var trunk := MeshInstance3D.new()
@@ -164,13 +213,14 @@ func _build_scenery() -> void:
 
 func _build_checkpoints() -> void:
 	var checkpoint_script := load("res://scripts/checkpoint.gd")
+	var length := _curve.get_baked_length()
 	for i in RaceManager.NUM_CHECKPOINTS:
-		var angle := TAU * i / RaceManager.NUM_CHECKPOINTS
+		var xf := _track_transform(length * i / RaceManager.NUM_CHECKPOINTS)
 		var checkpoint := Area3D.new()
 		checkpoint.set_script(checkpoint_script)
 		checkpoint.checkpoint_index = i
-		checkpoint.position = Vector3(cos(angle) * TRACK_RADIUS, 2.0, sin(angle) * TRACK_RADIUS)
-		checkpoint.rotation.y = -angle
+		checkpoint.basis = xf.basis
+		checkpoint.position = xf.origin + Vector3(0, 2, 0)
 
 		var col := CollisionShape3D.new()
 		var shape := BoxShape3D.new()
@@ -205,9 +255,10 @@ func _build_start_line(parent: Node3D) -> void:
 
 func _spawn_car() -> void:
 	car = preload("res://scenes/car.tscn").instantiate()
-	# Just behind the start line, facing along the track (counter-clockwise).
-	car.position = Vector3(TRACK_RADIUS, 0.7, 4.0)
-	car.rotation.y = PI
+	# A few metres past the start line, nose along the track.
+	var xf := _track_transform(5.0)
+	car.basis = xf.basis
+	car.position = xf.origin + Vector3(0, 0.7, 0)
 	add_child(car)
 
 func _spawn_hud() -> void:

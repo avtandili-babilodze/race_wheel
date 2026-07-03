@@ -3,7 +3,7 @@ extends Node
 signal race_started
 signal lap_completed(time: float, is_best: bool)
 
-const NUM_CHECKPOINTS := 4
+const NUM_CHECKPOINTS := 6
 const SAVE_PATH := "user://best_lap.save"
 
 var running := false
