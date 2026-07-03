@@ -1,9 +1,13 @@
 class_name Car
 extends VehicleBody3D
 
-@export var engine_force_max := 4500.0
+# Godot applies engine_force to every traction wheel, so effective thrust
+# is 4x these values.
+@export var engine_force_max := 1400.0
 @export var brake_force := 60.0
-@export var reverse_force := 2500.0
+@export var reverse_force := 700.0
+@export var top_speed := 38.0
+@export var top_speed_reverse := 8.0
 @export var steer_max_degrees := 32.0
 @export var steer_speed := 4.0
 
@@ -130,10 +134,14 @@ func _build_wheels() -> void:
 		# behaves like acceleration per metre of compression (~m/s^2 / m).
 		wheel.suspension_stiffness = 55.0
 		wheel.suspension_max_force = 15000.0
-		wheel.wheel_friction_slip = 3.0
 		wheel.use_as_traction = true
 		if key.begins_with("f"):
 			wheel.use_as_steering = true
+			wheel.wheel_friction_slip = 5.5
+		else:
+			# Slightly grippier rear keeps the tail planted (mild understeer
+			# is more forgiving than snap oversteer).
+			wheel.wheel_friction_slip = 6.0
 		add_child(wheel)
 
 		var tire := MeshInstance3D.new()
@@ -187,7 +195,11 @@ func _physics_process(delta: float) -> void:
 		steer_dir += 1.0
 	if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT):
 		steer_dir -= 1.0
-	var target_steer := steer_dir * deg_to_rad(steer_max_degrees)
+	# Tighten the steering range as speed rises: full lock when parked,
+	# ~35% of it at highway speed, so the car doesn't spin out.
+	var speed := linear_velocity.length()
+	var steer_scale: float = clamp(1.0 - speed / 35.0, 0.35, 1.0)
+	var target_steer := steer_dir * deg_to_rad(steer_max_degrees) * steer_scale
 	steering = move_toward(steering, target_steer, steer_speed * delta)
 
 	var throttle := 0.0
@@ -195,15 +207,18 @@ func _physics_process(delta: float) -> void:
 		throttle = 1.0
 	var braking := Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN)
 
+	# Positive engine_force pushes toward the body's +Z; the nose faces -Z,
+	# so forward needs a negative force.
 	var forward_speed := linear_velocity.dot(-global_transform.basis.z)
 	if braking and forward_speed > 0.5:
 		engine_force = 0.0
 		brake = brake_force
 	elif braking:
-		engine_force = -reverse_force
+		engine_force = reverse_force if forward_speed > -top_speed_reverse else 0.0
 		brake = 0.0
 	else:
-		engine_force = throttle * engine_force_max
+		var cutoff := 0.0 if forward_speed > top_speed else 1.0
+		engine_force = -throttle * engine_force_max * cutoff
 		brake = 0.0
 
 	if Input.is_physical_key_pressed(KEY_R):
