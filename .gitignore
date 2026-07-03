@@ -1,0 +1,10 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Godot export credentials
+export_credentials.cfg
+
+# Build output
+/build/
+*.import/
