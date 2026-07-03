@@ -8,3 +8,7 @@ export_credentials.cfg
 # Build output
 /build/
 *.import/
+
+# Launcher artifacts (local Godot copy, game log)
+.godot-bin/
+racewheel-log.txt
