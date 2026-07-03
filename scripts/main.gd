@@ -2,20 +2,6 @@ extends Node3D
 
 const TRACK_WIDTH := 14.0
 
-# Centerline control points (x, z) of the closed circuit; smoothed into a
-# Curve3D. Start/finish is at the first point, driving toward the second.
-const TRACK_POINTS: Array[Vector2] = [
-	Vector2(-80, 100), Vector2(40, 100),    # main straight
-	Vector2(100, 70), Vector2(115, 10),     # turn 1, sweeping right
-	Vector2(75, -35), Vector2(95, -95),     # esses
-	Vector2(25, -110),                      # bottom sweeper
-	Vector2(-25, -65),                      # chicane
-	Vector2(-75, -105),                     # dip
-	Vector2(-125, -65),                     # far hairpin
-	Vector2(-95, -5),                       # inward kink
-	Vector2(-125, 55),                      # final left sweeper
-]
-
 var car: Car
 var hud: Hud
 var _curve := Curve3D.new()
@@ -31,14 +17,21 @@ func _ready() -> void:
 	_spawn_hud()
 	_start_countdown()
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed \
+			and event.physical_keycode == KEY_ESCAPE:
+		RaceManager.stop_race()
+		get_tree().change_scene_to_file("res://scenes/menu.tscn")
+
 func _build_curve() -> void:
 	# Catmull-Rom style tangents from neighbours; the first point is repeated
 	# at the end so the loop closes seamlessly.
-	var n := TRACK_POINTS.size()
+	var points: Array = TrackData.TRACKS[RaceManager.selected_track].points
+	var n := points.size()
 	for i in n + 1:
-		var p := TRACK_POINTS[i % n]
-		var prev := TRACK_POINTS[(i - 1 + n) % n]
-		var next := TRACK_POINTS[(i + 1) % n]
+		var p: Vector2 = points[i % n]
+		var prev: Vector2 = points[(i - 1 + n) % n]
+		var next: Vector2 = points[(i + 1) % n]
 		var tangent := (next - prev) * 0.25
 		var t3 := Vector3(tangent.x, 0, tangent.y)
 		_curve.add_point(Vector3(p.x, 0, p.y), -t3, t3)
@@ -270,8 +263,11 @@ func _start_countdown() -> void:
 	for n in [3, 2, 1]:
 		hud.show_message(str(n))
 		await get_tree().create_timer(1.0).timeout
+		if not is_instance_valid(hud):
+			return  # scene was exited mid-countdown
 	hud.show_message("GO!")
 	car.set_physics_process(true)
 	RaceManager.start_race()
 	await get_tree().create_timer(1.0).timeout
-	hud.hide_message()
+	if is_instance_valid(hud):
+		hud.hide_message()

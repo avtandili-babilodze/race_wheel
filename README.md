@@ -33,26 +33,33 @@ project uses the GL Compatibility renderer, so it runs on modest hardware.
 
 ## Gameplay
 
-- The track is a closed GP-style circuit — a long start straight, sweepers,
-  esses, a chicane, and a hairpin — generated from a smooth curve.
+- The main menu lets you pick one of three tracks — **Grand Circuit** (a
+  GP-style lap with sweepers, esses, and a chicane), **Speedway Oval**
+  (flat-out), and **Switchback Snake** (tight hairpins) — each shown with
+  its outline and your best time. Press **Esc** in a race to return.
+- Every track is generated from a list of centerline points in
+  `scripts/track_data.gd`; add a new entry there to add a new track.
 - A 3-2-1 countdown starts the race; the lap timer begins on **GO!**
 - Six invisible checkpoint gates around the track must be crossed in order,
   so cutting the course or reversing over the line doesn't count.
-- Crossing the start/finish line completes the lap. Your best time is saved
-  to `user://best_lap.save` and shown on the HUD.
+- Crossing the start/finish line completes the lap. Your best time per
+  track is saved to `user://best_lap_<n>.save` and shown on the HUD.
 
 ## Project structure
 
 ```
 run.sh / run.bat  One-click launchers (find or download Godot, then play)
 scenes/
-  main.tscn   Main scene: builds the track, environment, and race flow
+  menu.tscn   Track selection menu (startup scene)
+  main.tscn   Race scene: builds the track, environment, and race flow
   car.tscn    Player vehicle (VehicleBody3D)
   hud.tscn    Lap timer / best time overlay
 scripts/
+  menu.gd          Track list with outline previews and best times
+  track_data.gd    Track catalog: centerline points for each circuit
   main.gd          Procedurally builds track, curbs, walls, scenery
   car.gd           Vehicle physics, input, third-person chase camera
-  race_manager.gd  Autoload: lap timing, checkpoint order, best-time save
+  race_manager.gd  Autoload: lap timing, checkpoints, per-track best times
   checkpoint.gd    Checkpoint gate trigger
   hud.gd           HUD labels and countdown messages
 ```

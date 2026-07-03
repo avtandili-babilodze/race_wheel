@@ -13,7 +13,7 @@ config_version=5
 config/name="race_wheel"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 config/icon="res://icon.svg"
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/menu.tscn"
 
 [autoload]
 

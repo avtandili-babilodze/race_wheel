@@ -28,6 +28,13 @@ func _ready() -> void:
 	message_label.visible = false
 	root.add_child(message_label)
 
+	var hint := _make_label(Vector2.ZERO, 18)
+	hint.text = "W/A/S/D drive  •  R reset  •  Esc menu"
+	hint.modulate = Color(1, 1, 1, 0.75)
+	hint.set_anchors_and_offsets_preset(
+		Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 20)
+	root.add_child(hint)
+
 	RaceManager.lap_completed.connect(_on_lap_completed)
 
 func _make_label(pos: Vector2, size: int) -> Label:
