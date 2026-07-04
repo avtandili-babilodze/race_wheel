@@ -93,7 +93,7 @@ func _build_environment() -> void:
 	env.glow_bloom = 0.05
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.7, 0.78, 0.88)
-	env.fog_density = 0.0015
+	env.fog_density = 0.001
 	env.fog_sky_affect = 0.0
 
 	var world_env := WorldEnvironment.new()
@@ -110,8 +110,8 @@ func _build_environment() -> void:
 
 	var grass_mat := StandardMaterial3D.new()
 	grass_mat.albedo_texture = _noise_tex(
-		0.01, Color(0.16, 0.32, 0.13), Color(0.25, 0.44, 0.18))
-	grass_mat.uv1_scale = Vector3(60, 60, 1)
+		0.008, Color(0.15, 0.31, 0.12), Color(0.22, 0.4, 0.16))
+	grass_mat.uv1_scale = Vector3(80, 80, 1)
 	grass_mat.roughness = 1.0
 	var ground_mesh := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
@@ -191,6 +191,31 @@ func _build_track() -> void:
 	wall_col.shape = wall_shape
 	wall_body.add_child(wall_col)
 	add_child(wall_body)
+
+	# Mowed apron outside the walls: alternating stripes of groomed turf.
+	var mow_light := StandardMaterial3D.new()
+	mow_light.albedo_color = Color(0.21, 0.4, 0.16)
+	mow_light.roughness = 1.0
+	mow_light.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var mow_dark := StandardMaterial3D.new()
+	mow_dark.albedo_color = Color(0.16, 0.33, 0.12)
+	mow_dark.roughness = 1.0
+	mow_dark.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var tris_light := PackedVector3Array()
+	var tris_dark := PackedVector3Array()
+	for side: float in [-1.0, 1.0]:
+		var inner := _rail(xfs, side * (half + 1.8), 0.02)
+		var outer := _rail(xfs, side * (half + 7.8), 0.02)
+		for i in inner.size() - 1:
+			var quad := PackedVector3Array([
+				inner[i], outer[i], outer[i + 1],
+				inner[i], outer[i + 1], inner[i + 1]])
+			if (i / 6) % 2 == 0:
+				tris_light.append_array(quad)
+			else:
+				tris_dark.append_array(quad)
+	_add_ribbon(tris_light, mow_light)
+	_add_ribbon(tris_dark, mow_dark)
 
 	_build_gantry()
 
@@ -308,7 +333,7 @@ func _crowd_tex() -> NoiseTexture2D:
 	# reads as a crowd of spectators from a distance.
 	var noise := FastNoiseLite.new()
 	noise.noise_type = FastNoiseLite.TYPE_CELLULAR
-	noise.frequency = 0.25
+	noise.frequency = 0.1
 	var tex := NoiseTexture2D.new()
 	tex.noise = noise
 	tex.width = 256
@@ -357,6 +382,97 @@ func _build_scenery() -> void:
 	_build_grandstands()
 	_build_mountains()
 	_build_trees()
+	_build_bushes()
+
+# Flat-shaded, noise-jittered sphere (subdivided octahedron) — the building
+# block for foliage and bushes. Unit radius; scale per instance.
+func _octa_tris(levels: int) -> Array:
+	var verts := [
+		Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0),
+		Vector3(0, -1, 0), Vector3(0, 0, 1), Vector3(0, 0, -1)]
+	var faces := [
+		[2, 4, 0], [2, 0, 5], [2, 5, 1], [2, 1, 4],
+		[3, 0, 4], [3, 5, 0], [3, 1, 5], [3, 4, 1]]
+	var tris := []
+	for f in faces:
+		tris.append([verts[f[0]], verts[f[1]], verts[f[2]]])
+	for l in levels:
+		var out := []
+		for t in tris:
+			var a: Vector3 = t[0]
+			var b: Vector3 = t[1]
+			var c: Vector3 = t[2]
+			var ab := ((a + b) / 2.0).normalized()
+			var bc := ((b + c) / 2.0).normalized()
+			var ca := ((c + a) / 2.0).normalized()
+			out.append([a, ab, ca])
+			out.append([ab, b, bc])
+			out.append([ca, bc, c])
+			out.append([ab, bc, ca])
+		tris = out
+	return tris
+
+func _blob_mesh(seed_val: int, jitter: float) -> ArrayMesh:
+	# Jitter comes from world-position noise, so shared edge vertices
+	# displace identically and the surface stays crack-free.
+	var noise := FastNoiseLite.new()
+	noise.seed = seed_val
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_smooth_group(-1)
+	for t in _octa_tris(2):
+		for v: Vector3 in t:
+			var r := 1.0 + noise.get_noise_3d(v.x * 40.0, v.y * 40.0, v.z * 40.0) * jitter
+			st.add_vertex(v * r)
+	st.generate_normals()
+	return st.commit()
+
+# Craggy flat-shaded peak with height-based vertex colours: grassy foot,
+# rocky slopes, noisy snow line. Unit height/radius; scaled per instance.
+func _mountain_mesh(seed_val: int) -> ArrayMesh:
+	var noise := FastNoiseLite.new()
+	noise.seed = seed_val
+	var rings := 7
+	var sectors := 16
+	var grid: Array[PackedVector3Array] = []
+	var cols: Array[PackedColorArray] = []
+	for r in rings + 1:
+		var t := float(r) / rings
+		var ring_pts := PackedVector3Array()
+		var ring_cols := PackedColorArray()
+		for s in sectors + 1:
+			var ang := TAU * (s % sectors) / sectors
+			var n := noise.get_noise_3d(cos(ang) * 40.0, t * 55.0, sin(ang) * 40.0)
+			var radius := maxf(pow(1.0 - t, 1.15), 0.02) \
+				* (1.0 + n * 0.5 * (1.0 - t * 0.5))
+			var h := t + n * 0.1 * (1.0 - t)
+			ring_pts.append(Vector3(cos(ang) * radius, h, sin(ang) * radius))
+			var c: Color
+			if t < 0.1:
+				c = Color(0.16, 0.24, 0.15)
+			elif h > 0.74 + n * 0.14:
+				c = Color(0.88, 0.9, 0.94)
+			else:
+				c = Color(0.19, 0.21, 0.25).lerp(
+					Color(0.11, 0.13, 0.17), n * 0.5 + 0.5)
+			ring_cols.append(c)
+		grid.append(ring_pts)
+		cols.append(ring_cols)
+
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_smooth_group(-1)
+	for r in rings:
+		for s in sectors:
+			var idx := [[r, s], [r, s + 1], [r + 1, s + 1], [r + 1, s]]
+			for tri in [[0, 1, 2], [0, 2, 3]]:
+				for k: int in tri:
+					var rr: int = idx[k][0]
+					var ss: int = idx[k][1]
+					st.set_color(cols[rr][ss])
+					st.add_vertex(grid[rr][ss])
+	st.generate_normals()
+	return st.commit()
 
 func _build_grandstands() -> void:
 	var frame_mat := StandardMaterial3D.new()
@@ -438,57 +554,76 @@ func _build_mountains() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.27, 0.35, 0.33)
+	mat.vertex_color_use_as_albedo = true
 	mat.roughness = 1.0
-	for i in 14:
-		var angle := TAU * i / 14 + rng.randf_range(-0.15, 0.15)
-		var r := rng.randf_range(300.0, 350.0)
-		var mountain := MeshInstance3D.new()
-		var cone := CylinderMesh.new()
-		cone.top_radius = 0.0
-		cone.bottom_radius = rng.randf_range(55.0, 95.0)
-		cone.height = rng.randf_range(40.0, 75.0)
-		cone.radial_segments = 9
-		mountain.mesh = cone
-		mountain.material_override = mat
-		mountain.position = Vector3(
-			cos(angle) * r, cone.height / 2.0 - 2.0, sin(angle) * r)
-		mountain.rotation.y = rng.randf() * TAU
-		add_child(mountain)
+	var variants: Array[ArrayMesh] = []
+	for v in 4:
+		variants.append(_mountain_mesh(rng.randi()))
+	# Nine sites around the horizon, each a small range of 1-3 peaks.
+	for i in 9:
+		var angle := TAU * i / 9 + rng.randf_range(-0.12, 0.12)
+		var r := rng.randf_range(300.0, 345.0)
+		var base := Vector3(cos(angle) * r, 0, sin(angle) * r)
+		var tangent := Vector3(-sin(angle), 0, cos(angle))
+		var peaks := 1 + rng.randi() % 3
+		for p in peaks:
+			var mi := MeshInstance3D.new()
+			mi.mesh = variants[rng.randi() % variants.size()]
+			mi.material_override = mat
+			var height := rng.randf_range(45.0, 80.0)
+			if p > 0:
+				height *= rng.randf_range(0.5, 0.75)
+			var spread := rng.randf_range(1.3, 1.9)
+			mi.scale = Vector3(height * spread, height, height * spread)
+			var slide := 0.0
+			if p > 0:
+				slide = rng.randf_range(-1.6, 1.6) * height
+			mi.position = base + tangent * slide + Vector3(0, -1.5, 0)
+			mi.rotation.y = rng.randf() * TAU
+			add_child(mi)
 
 func _build_trees() -> void:
 	var trunk_mat := StandardMaterial3D.new()
-	trunk_mat.albedo_color = Color(0.4, 0.28, 0.15)
+	trunk_mat.albedo_color = Color(0.35, 0.25, 0.16)
 	trunk_mat.roughness = 1.0
 
 	var greens: Array[StandardMaterial3D] = []
-	for c in [Color(0.09, 0.29, 0.1), Color(0.14, 0.37, 0.11), Color(0.21, 0.42, 0.14)]:
+	for c in [Color(0.13, 0.30, 0.10), Color(0.18, 0.36, 0.12),
+			Color(0.24, 0.42, 0.14), Color(0.10, 0.26, 0.11)]:
 		var m := StandardMaterial3D.new()
 		m.albedo_color = c
 		m.roughness = 1.0
 		greens.append(m)
 
-	var trunk_mesh := CylinderMesh.new()
-	trunk_mesh.top_radius = 0.3
-	trunk_mesh.bottom_radius = 0.45
-	trunk_mesh.height = 3.0
-	var blob_mesh := SphereMesh.new()
-	blob_mesh.radius = 1.8
-	blob_mesh.height = 3.2
-	var pine_mesh := CylinderMesh.new()
-	pine_mesh.top_radius = 0.0
-	pine_mesh.bottom_radius = 1.6
-	pine_mesh.height = 5.0
-	pine_mesh.radial_segments = 8
-
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
+
+	var blob_variants: Array[ArrayMesh] = []
+	for v in 4:
+		blob_variants.append(_blob_mesh(rng.randi(), 0.22))
+
+	var trunk_mesh := CylinderMesh.new()
+	trunk_mesh.top_radius = 0.18
+	trunk_mesh.bottom_radius = 0.32
+	trunk_mesh.height = 3.4
+	trunk_mesh.radial_segments = 7
+
+	var pine_meshes: Array[CylinderMesh] = []
+	for pr in [[1.7, 2.2], [1.3, 1.8], [0.9, 1.5]]:
+		var cone := CylinderMesh.new()
+		cone.top_radius = 0.0
+		cone.bottom_radius = pr[0]
+		cone.height = pr[1]
+		cone.radial_segments = 7
+		pine_meshes.append(cone)
+	var pine_lift := [0.0, 1.3, 2.5]
+
 	var placed := 0
 	var attempts := 0
 	while placed < 70 and attempts < 500:
 		attempts += 1
 		var pos := Vector3(rng.randf_range(-240, 240), 0, rng.randf_range(-240, 240))
-		if _distance_to_track(pos) < TRACK_WIDTH / 2.0 + 6.0:
+		if _distance_to_track(pos) < TRACK_WIDTH / 2.0 + 10.0:
 			continue
 		var near_stand := false
 		for s in _stand_spots:
@@ -498,37 +633,85 @@ func _build_trees() -> void:
 		if near_stand:
 			continue
 		placed += 1
-		var scale_factor := rng.randf_range(0.8, 1.6)
-		var leaf_mat: StandardMaterial3D = greens[rng.randi() % greens.size()]
+		var sf := rng.randf_range(0.8, 1.5)
+		var leaf: StandardMaterial3D = greens[rng.randi() % greens.size()]
+
+		# Slight lean and non-uniform scale so no two trees match.
+		var tree := Node3D.new()
+		tree.position = pos
+		tree.rotation_degrees = Vector3(
+			rng.randf_range(-3, 3), rng.randf() * 360.0, rng.randf_range(-3, 3))
+		tree.scale = Vector3(
+			sf * rng.randf_range(0.9, 1.1), sf, sf * rng.randf_range(0.9, 1.1))
+		add_child(tree)
 
 		var trunk := MeshInstance3D.new()
 		trunk.mesh = trunk_mesh
 		trunk.material_override = trunk_mat
-		trunk.position = pos + Vector3(0, 1.5 * scale_factor, 0)
-		trunk.scale = Vector3.ONE * scale_factor
-		add_child(trunk)
+		trunk.position = Vector3(0, 1.7, 0)
+		tree.add_child(trunk)
 
-		if rng.randf() < 0.3:
-			# Pine: a single tall cone.
-			var pine := MeshInstance3D.new()
-			pine.mesh = pine_mesh
-			pine.material_override = leaf_mat
-			pine.position = pos + Vector3(0, 4.6 * scale_factor, 0)
-			pine.scale = Vector3.ONE * scale_factor
-			add_child(pine)
+		if rng.randf() < 0.35:
+			# Pine: three stacked cones.
+			for c in 3:
+				var cone := MeshInstance3D.new()
+				cone.mesh = pine_meshes[c]
+				cone.material_override = leaf
+				cone.position = Vector3(0, 2.6 + pine_lift[c], 0)
+				tree.add_child(cone)
 		else:
-			# Deciduous: a cluster of 2-3 offset blobs.
-			var blobs := 2 + (rng.randi() % 2)
+			# Deciduous: a crown of jittered low-poly blobs.
+			var blobs := 3 + (rng.randi() % 2)
 			for b in blobs:
 				var blob := MeshInstance3D.new()
-				blob.mesh = blob_mesh
-				blob.material_override = leaf_mat
-				var jitter := Vector3(
-					rng.randf_range(-0.7, 0.7), rng.randf_range(-0.3, 0.5),
-					rng.randf_range(-0.7, 0.7)) * scale_factor
-				blob.position = pos + Vector3(0, 4.0 * scale_factor, 0) + jitter
-				blob.scale = Vector3.ONE * scale_factor * rng.randf_range(0.7, 1.0)
-				add_child(blob)
+				blob.mesh = blob_variants[rng.randi() % blob_variants.size()]
+				blob.material_override = leaf
+				var br := rng.randf_range(1.5, 2.0) if b == 0 \
+					else rng.randf_range(1.0, 1.5)
+				var off := Vector3.ZERO
+				if b > 0:
+					off = Vector3(rng.randf_range(-1.1, 1.1),
+						rng.randf_range(-0.5, 0.6), rng.randf_range(-1.1, 1.1))
+				blob.position = Vector3(0, 4.1, 0) + off
+				blob.scale = Vector3(br, br * 0.82, br)
+				blob.rotation.y = rng.randf() * TAU
+				tree.add_child(blob)
+
+func _build_bushes() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 99
+	var mats: Array[StandardMaterial3D] = []
+	for c in [Color(0.12, 0.28, 0.10), Color(0.17, 0.33, 0.12)]:
+		var m := StandardMaterial3D.new()
+		m.albedo_color = c
+		m.roughness = 1.0
+		mats.append(m)
+	var variants: Array[ArrayMesh] = []
+	for v in 3:
+		variants.append(_blob_mesh(rng.randi(), 0.3))
+	var placed := 0
+	var attempts := 0
+	while placed < 90 and attempts < 600:
+		attempts += 1
+		var pos := Vector3(rng.randf_range(-230, 230), 0, rng.randf_range(-230, 230))
+		if _distance_to_track(pos) < TRACK_WIDTH / 2.0 + 8.5:
+			continue
+		var near_stand := false
+		for s in _stand_spots:
+			if pos.distance_to(s) < 16.0:
+				near_stand = true
+				break
+		if near_stand:
+			continue
+		placed += 1
+		var bush := MeshInstance3D.new()
+		bush.mesh = variants[rng.randi() % variants.size()]
+		bush.material_override = mats[rng.randi() % mats.size()]
+		var s := rng.randf_range(0.5, 1.3)
+		bush.scale = Vector3(s, s * 0.55, s)
+		bush.position = pos + Vector3(0, s * 0.3, 0)
+		bush.rotation.y = rng.randf() * TAU
+		add_child(bush)
 
 func _build_checkpoints() -> void:
 	var checkpoint_script := load("res://race/checkpoint.gd")

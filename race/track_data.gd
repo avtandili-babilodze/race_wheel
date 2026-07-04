@@ -1,5 +1,20 @@
 class_name TrackData
 
+# Smooths a track's control points into a closed Curve2D (Catmull-Rom style
+# tangents, first point repeated to close the loop). Used by the menu for
+# previews and length display; the race scene builds the same shape in 3D.
+static func build_curve2d(points: Array) -> Curve2D:
+	var curve := Curve2D.new()
+	var n := points.size()
+	for i in n + 1:
+		var p: Vector2 = points[i % n]
+		var prev: Vector2 = points[(i - 1 + n) % n]
+		var next: Vector2 = points[(i + 1) % n]
+		var tangent := (next - prev) * 0.25
+		curve.add_point(p, -tangent, tangent)
+	curve.bake_interval = 4.0
+	return curve
+
 # Each track is a closed circuit defined by centerline control points (x, z),
 # smoothed into a curve at build time. Start/finish is at the first point,
 # driving toward the second.
