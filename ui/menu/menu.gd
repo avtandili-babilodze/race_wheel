@@ -4,7 +4,6 @@ const ACCENT := Color(0.85, 0.18, 0.14)
 const GOLD := Color(0.95, 0.78, 0.3)
 const TEXT_DIM := Color(1, 1, 1, 0.55)
 
-# Draws the smoothed outline of a track, scaled to fit its box.
 class TrackPreview:
 	extends Control
 	var points: Array = []
@@ -29,7 +28,7 @@ class TrackPreview:
 		for p in baked:
 			screen_pts.append(p * scale_factor + offset)
 		screen_pts.append(screen_pts[0])
-		# Soft shadow pass, then the line itself.
+		
 		draw_polyline(screen_pts, Color(0, 0, 0, 0.4), 7.0, true)
 		draw_polyline(screen_pts, Color(0.93, 0.94, 0.97), 3.5, true)
 		draw_circle(screen_pts[0], 6.0, Color(0.85, 0.18, 0.14))
@@ -41,19 +40,27 @@ func _ready() -> void:
 	var gradient := Gradient.new()
 	gradient.set_color(0, Color(0.11, 0.13, 0.18))
 	gradient.set_color(1, Color(0.04, 0.05, 0.08))
+	
 	var bg_tex := GradientTexture2D.new()
 	bg_tex.gradient = gradient
 	bg_tex.fill_from = Vector2(0, 0)
 	bg_tex.fill_to = Vector2(0, 1)
+	
+	# --- THE FIX: Detach background layout from the UI tree ---
+	var bg_layer := CanvasLayer.new()
+	bg_layer.layer = -1 # Forces it strictly behind all UI
+	add_child(bg_layer)
+	
 	var bg := TextureRect.new()
 	bg.texture = bg_tex
-	bg.stretch_mode = TextureRect.STRETCH_SCALE
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE 
+	bg_layer.add_child(bg)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT) 
+	# ----------------------------------------------------------
 
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 14)
