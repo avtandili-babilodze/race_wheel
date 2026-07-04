@@ -1,9 +1,12 @@
 class_name Hud
 extends CanvasLayer
 
+var car: Car
+
 var time_label: Label
 var lap_label: Label
 var best_label: Label
+var speed_label: Label
 var message_label: Label
 
 func _ready() -> void:
@@ -20,6 +23,14 @@ func _ready() -> void:
 
 	best_label = _make_label(Vector2(20, 92), 24)
 	root.add_child(best_label)
+
+	speed_label = _make_label(Vector2.ZERO, 40)
+	speed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	speed_label.set_anchors_and_offsets_preset(
+		Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 16)
+	# Grow around the anchor so the label stays centered as digits change.
+	speed_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	root.add_child(speed_label)
 
 	message_label = _make_label(Vector2(-200, -50), 64)
 	message_label.custom_minimum_size = Vector2(400, 80)
@@ -53,6 +64,8 @@ func _process(_delta: float) -> void:
 		best_label.text = "Best: --"
 	else:
 		best_label.text = "Best: %.2f" % RaceManager.best_lap_time
+	if is_instance_valid(car):
+		speed_label.text = "%d km/h" % roundi(car.linear_velocity.length() * 3.6)
 
 func _on_lap_completed(time: float, is_best: bool) -> void:
 	var text := "Lap done: %.2fs" % time

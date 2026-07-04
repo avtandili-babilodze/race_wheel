@@ -270,6 +270,7 @@ func _spawn_car() -> void:
 
 func _spawn_hud() -> void:
 	hud = preload("res://ui/hud/hud.tscn").instantiate()
+	hud.car = car
 	add_child(hud)
 
 func _start_countdown() -> void:
