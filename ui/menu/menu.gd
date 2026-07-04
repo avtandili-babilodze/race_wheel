@@ -94,4 +94,4 @@ func _ready() -> void:
 
 func _start_track(index: int) -> void:
 	RaceManager.select_track(index)
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	get_tree().change_scene_to_file("res://race/race.tscn")

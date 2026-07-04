@@ -49,19 +49,22 @@ project uses the GL Compatibility renderer, so it runs on modest hardware.
 
 ```
 run.sh / run.bat  One-click launchers (find or download Godot, then play)
-scenes/
-  menu.tscn   Track selection menu (startup scene)
-  main.tscn   Race scene: builds the track, environment, and race flow
-  car.tscn    Player vehicle (VehicleBody3D)
-  hud.tscn    Lap timer / best time overlay
-scripts/
-  menu.gd          Track list with outline previews and best times
+autoload/
+  race_manager.gd  Global race state: lap timing, checkpoints, best times
+race/
+  race.tscn/.gd    Race scene: builds track, environment, and race flow
   track_data.gd    Track catalog: centerline points for each circuit
-  main.gd          Procedurally builds track, curbs, walls, scenery
-  car.gd           Vehicle physics, input, third-person chase camera
-  race_manager.gd  Autoload: lap timing, checkpoints, per-track best times
   checkpoint.gd    Checkpoint gate trigger
-  hud.gd           HUD labels and countdown messages
+car/
+  car.tscn/.gd     Player vehicle: physics, input, chase camera
+ui/
+  menu/            Track selection menu (startup scene)
+  hud/             Lap timer / best time overlay
+
+Folders are organized by feature — each scene lives beside its script, so a
+feature can be extended or removed as a unit. New game features get a new
+top-level folder (e.g. audio/, opponents/); shared art or sound assets
+would go in assets/.
 ```
 
 Everything (track, car, scenery) is generated procedurally in code — there

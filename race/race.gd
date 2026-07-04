@@ -21,7 +21,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed \
 			and event.physical_keycode == KEY_ESCAPE:
 		RaceManager.stop_race()
-		get_tree().change_scene_to_file("res://scenes/menu.tscn")
+		get_tree().change_scene_to_file("res://ui/menu/menu.tscn")
 
 func _build_curve() -> void:
 	# Catmull-Rom style tangents from neighbours; the first point is repeated
@@ -219,7 +219,7 @@ func _build_scenery() -> void:
 		add_child(leaves)
 
 func _build_checkpoints() -> void:
-	var checkpoint_script := load("res://scripts/checkpoint.gd")
+	var checkpoint_script := load("res://race/checkpoint.gd")
 	var length := _curve.get_baked_length()
 	for i in RaceManager.NUM_CHECKPOINTS:
 		var xf := _track_transform(length * i / RaceManager.NUM_CHECKPOINTS)
@@ -261,7 +261,7 @@ func _build_start_line(parent: Node3D) -> void:
 			parent.add_child(tile)
 
 func _spawn_car() -> void:
-	car = preload("res://scenes/car.tscn").instantiate()
+	car = preload("res://car/car.tscn").instantiate()
 	# A few metres past the start line, nose along the track.
 	var xf := _track_transform(5.0)
 	car.basis = xf.basis
@@ -269,7 +269,7 @@ func _spawn_car() -> void:
 	add_child(car)
 
 func _spawn_hud() -> void:
-	hud = preload("res://scenes/hud.tscn").instantiate()
+	hud = preload("res://ui/hud/hud.tscn").instantiate()
 	add_child(hud)
 
 func _start_countdown() -> void:
