@@ -28,6 +28,16 @@ func _ready() -> void:
 	_build_wheels()
 	_build_camera()
 
+func _box(size: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	mi.mesh = mesh
+	mi.position = pos
+	mi.material_override = mat
+	add_child(mi)
+	return mi
+
 func _build_chassis() -> void:
 	var collision := CollisionShape3D.new()
 	var box := BoxShape3D.new()
@@ -37,76 +47,116 @@ func _build_chassis() -> void:
 	add_child(collision)
 
 	var paint := StandardMaterial3D.new()
-	paint.albedo_color = Color(0.8, 0.08, 0.08)
-	paint.metallic = 0.7
-	paint.roughness = 0.25
+	paint.albedo_color = Color(0.72, 0.06, 0.06)
+	paint.metallic = 0.75
+	paint.roughness = 0.3
+
+	var trim := StandardMaterial3D.new()
+	trim.albedo_color = Color(0.07, 0.07, 0.08)
+	trim.roughness = 0.6
 
 	var glass := StandardMaterial3D.new()
 	glass.albedo_color = Color(0.08, 0.1, 0.14)
 	glass.metallic = 0.9
 	glass.roughness = 0.1
 
-	var body_mesh := MeshInstance3D.new()
-	var body_box := BoxMesh.new()
-	body_box.size = Vector3(1.8, 0.55, 4.0)
-	body_mesh.mesh = body_box
-	body_mesh.position = Vector3(0, 0.45, 0)
-	body_mesh.material_override = paint
-	add_child(body_mesh)
+	var stripe_mat := StandardMaterial3D.new()
+	stripe_mat.albedo_color = Color(0.94, 0.94, 0.92)
+	stripe_mat.metallic = 0.2
+	stripe_mat.roughness = 0.5
 
-	# Sloped-looking nose: a lower, shorter box ahead of the body.
-	var nose := MeshInstance3D.new()
-	var nose_box := BoxMesh.new()
-	nose_box.size = Vector3(1.7, 0.35, 0.8)
-	nose.mesh = nose_box
-	nose.position = Vector3(0, 0.38, -2.2)
-	nose.material_override = paint
-	add_child(nose)
+	# Body, low nose, cabin.
+	_box(Vector3(1.8, 0.55, 4.0), Vector3(0, 0.45, 0), paint)
+	_box(Vector3(1.7, 0.35, 0.8), Vector3(0, 0.38, -2.2), paint)
+	_box(Vector3(1.4, 0.45, 1.9), Vector3(0, 0.95, 0.1), glass)
 
-	var cabin := MeshInstance3D.new()
-	var cabin_box := BoxMesh.new()
-	cabin_box.size = Vector3(1.4, 0.45, 1.9)
-	cabin.mesh = cabin_box
-	cabin.position = Vector3(0, 0.95, 0.1)
-	cabin.material_override = glass
-	add_child(cabin)
+	# Sloped windshield and rear window (wedges).
+	var windshield := MeshInstance3D.new()
+	var ws_mesh := PrismMesh.new()
+	ws_mesh.size = Vector3(0.9, 0.45, 1.38)
+	ws_mesh.left_to_right = 0.0
+	windshield.mesh = ws_mesh
+	windshield.rotation_degrees = Vector3(0, 90, 0)
+	windshield.position = Vector3(0, 0.95, -1.3)
+	windshield.material_override = glass
+	add_child(windshield)
 
-	var spoiler := MeshInstance3D.new()
-	var spoiler_box := BoxMesh.new()
-	spoiler_box.size = Vector3(1.6, 0.08, 0.5)
-	spoiler.mesh = spoiler_box
-	spoiler.position = Vector3(0, 1.05, 1.9)
-	spoiler.material_override = paint
-	add_child(spoiler)
+	var rear_window := MeshInstance3D.new()
+	var rw_mesh := PrismMesh.new()
+	rw_mesh.size = Vector3(0.6, 0.45, 1.38)
+	rw_mesh.left_to_right = 1.0
+	rear_window.mesh = rw_mesh
+	rear_window.rotation_degrees = Vector3(0, 90, 0)
+	rear_window.position = Vector3(0, 0.95, 1.35)
+	rear_window.material_override = glass
+	add_child(rear_window)
 
+	# Racing stripes: hood, roof, trunk.
+	for sx: float in [-0.15, 0.15]:
+		_box(Vector3(0.18, 0.03, 1.1), Vector3(sx, 0.741, -1.43), stripe_mat)
+		_box(Vector3(0.18, 0.03, 1.86), Vector3(sx, 1.191, 0.1), stripe_mat)
+		_box(Vector3(0.18, 0.03, 0.9), Vector3(sx, 0.741, 1.53), stripe_mat)
+
+	# Aero and trim details.
+	_box(Vector3(1.9, 0.09, 0.35), Vector3(0, 0.14, -2.45), trim)      # splitter
+	_box(Vector3(1.9, 0.09, 0.35), Vector3(0, 0.14, 2.05), trim)       # diffuser
+	_box(Vector3(0.9, 0.16, 0.05), Vector3(0, 0.28, -2.62), trim)      # grille
+	for side: float in [-1.0, 1.0]:
+		_box(Vector3(0.06, 0.1, 2.2), Vector3(side * 0.92, 0.2, -0.1), trim)  # skirt
+		_box(Vector3(0.24, 0.09, 0.14), Vector3(side * 0.84, 1.0, -0.52), trim)  # mirror
+
+	# Rear wing on struts.
+	var wing := _box(Vector3(1.7, 0.07, 0.5), Vector3(0, 1.12, 1.95), paint)
+	wing.rotation_degrees = Vector3(-8, 0, 0)
+	for side: float in [-1.0, 1.0]:
+		_box(Vector3(0.08, 0.32, 0.3), Vector3(side * 0.6, 0.9, 1.95), trim)
+
+	# Exhaust pipes.
+	var pipe_mat := StandardMaterial3D.new()
+	pipe_mat.albedo_color = Color(0.6, 0.6, 0.62)
+	pipe_mat.metallic = 1.0
+	pipe_mat.roughness = 0.25
+	var pipe_mesh := CylinderMesh.new()
+	pipe_mesh.top_radius = 0.06
+	pipe_mesh.bottom_radius = 0.06
+	pipe_mesh.height = 0.3
+	for sx: float in [-0.35, 0.35]:
+		var pipe := MeshInstance3D.new()
+		pipe.mesh = pipe_mesh
+		pipe.rotation_degrees = Vector3(90, 0, 0)
+		pipe.position = Vector3(sx, 0.24, 2.05)
+		pipe.material_override = pipe_mat
+		add_child(pipe)
+
+	# Lights.
 	var headlight := StandardMaterial3D.new()
 	headlight.albedo_color = Color(1, 1, 0.85)
 	headlight.emission_enabled = true
 	headlight.emission = Color(1, 1, 0.8)
-	headlight.emission_energy_multiplier = 2.0
+	headlight.emission_energy_multiplier = 2.5
 
 	var taillight := StandardMaterial3D.new()
 	taillight.albedo_color = Color(1, 0.1, 0.1)
 	taillight.emission_enabled = true
 	taillight.emission = Color(1, 0.05, 0.05)
-	taillight.emission_energy_multiplier = 2.0
+	taillight.emission_energy_multiplier = 2.5
 
-	for side in [-1, 1]:
-		var head := MeshInstance3D.new()
-		var head_box := BoxMesh.new()
-		head_box.size = Vector3(0.35, 0.15, 0.05)
-		head.mesh = head_box
-		head.position = Vector3(side * 0.6, 0.45, -2.61)
-		head.material_override = headlight
-		add_child(head)
+	for side: float in [-1.0, 1.0]:
+		_box(Vector3(0.35, 0.15, 0.05), Vector3(side * 0.6, 0.45, -2.61), headlight)
+		_box(Vector3(0.45, 0.12, 0.05), Vector3(side * 0.55, 0.55, 2.01), taillight)
 
-		var tail := MeshInstance3D.new()
-		var tail_box := BoxMesh.new()
-		tail_box.size = Vector3(0.45, 0.12, 0.05)
-		tail.mesh = tail_box
-		tail.position = Vector3(side * 0.55, 0.55, 2.01)
-		tail.material_override = taillight
-		add_child(tail)
+	# Door numbers.
+	for side: float in [-1.0, 1.0]:
+		var number := Label3D.new()
+		number.text = "7"
+		number.font_size = 160
+		number.pixel_size = 0.0035
+		number.modulate = Color(0.95, 0.95, 0.92)
+		number.outline_size = 32
+		number.outline_modulate = Color(0.07, 0.07, 0.08)
+		number.position = Vector3(side * 0.905, 0.48, -0.2)
+		number.rotation_degrees = Vector3(0, 90.0 * side, 0)
+		add_child(number)
 
 func _build_wheels() -> void:
 	var rubber := StandardMaterial3D.new()
@@ -144,25 +194,35 @@ func _build_wheels() -> void:
 			wheel.wheel_friction_slip = 6.0
 		add_child(wheel)
 
+		# Torus tire reads much rounder than a flat cylinder.
 		var tire := MeshInstance3D.new()
-		var cyl := CylinderMesh.new()
-		cyl.top_radius = 0.35
-		cyl.bottom_radius = 0.35
-		cyl.height = 0.3
-		tire.mesh = cyl
+		var torus := TorusMesh.new()
+		torus.inner_radius = 0.16
+		torus.outer_radius = 0.35
+		tire.mesh = torus
 		tire.rotation_degrees = Vector3(0, 0, 90)
 		tire.material_override = rubber
 		wheel.add_child(tire)
 
-		var cap := MeshInstance3D.new()
-		var cap_cyl := CylinderMesh.new()
-		cap_cyl.top_radius = 0.2
-		cap_cyl.bottom_radius = 0.2
-		cap_cyl.height = 0.31
-		cap.mesh = cap_cyl
-		cap.rotation_degrees = Vector3(0, 0, 90)
-		cap.material_override = hub
-		wheel.add_child(cap)
+		var rim := MeshInstance3D.new()
+		var rim_cyl := CylinderMesh.new()
+		rim_cyl.top_radius = 0.17
+		rim_cyl.bottom_radius = 0.17
+		rim_cyl.height = 0.22
+		rim.mesh = rim_cyl
+		rim.rotation_degrees = Vector3(0, 0, 90)
+		rim.material_override = hub
+		wheel.add_child(rim)
+
+		var hub_dot := MeshInstance3D.new()
+		var dot_cyl := CylinderMesh.new()
+		dot_cyl.top_radius = 0.055
+		dot_cyl.bottom_radius = 0.055
+		dot_cyl.height = 0.26
+		hub_dot.mesh = dot_cyl
+		hub_dot.rotation_degrees = Vector3(0, 0, 90)
+		hub_dot.material_override = rubber
+		wheel.add_child(hub_dot)
 
 func _build_camera() -> void:
 	_camera = Camera3D.new()
