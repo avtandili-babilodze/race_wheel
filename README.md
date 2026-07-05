@@ -36,7 +36,7 @@ project uses the GL Compatibility renderer, so it runs on modest hardware.
 - The main menu lets you pick a car and a track. Cars range from the
   **Thunder V8** muscle car to the **Apex F1** single-seater, each with its
   own speed, grip, and handling. Tracks range from the flat-out **Speedway
-  Oval** to the 6.9 km **Colossus**, each shown with its outline and your
+  Oval** to the 4.4 km **Colossus**, each shown with its outline and your
   best time. Press **Esc** in a race to return.
 - Every track is generated from a list of centerline points in
   `race/track_data.gd`, and every car from a spec in `car/car_data.gd`;

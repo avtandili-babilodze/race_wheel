@@ -98,36 +98,32 @@ const TRACKS := [
 		],
 	},
 	{
-		# The 6 km giant: an outer loop of mega-straights wrapped around an
-		# eight-rung infield serpentine. The rungs weave gently and all share
-		# the same wave phase, so the corridors between them stay 70 m apart.
+		# The endurance flagship: a flowing grand-prix layout that uses the
+		# whole plot — esses up the east side, a sweeping arc onto the top
+		# straight, a wide hairpin, a diagonal blast into a carousel, a
+		# western lobe, and a weaving infield run before the line.
 		"name": "Colossus",
 		"points": [
-			Vector2(-240, 352), Vector2(-150, 355), Vector2(40, 352),
-			Vector2(180, 356), Vector2(300, 348),    # start/finish mega-straight
-			Vector2(352, 295),                       # turn 1
-			Vector2(356, 180), Vector2(350, 60),     # east-edge blast
-			Vector2(356, -60), Vector2(350, -170),
-			Vector2(345, -250),                      # kink at speed
-			Vector2(272, -330), Vector2(150, -350),  # top-right sweep
-			Vector2(20, -346), Vector2(-110, -352), Vector2(-200, -348),  # top straight
-			Vector2(-296, -312),                     # corner dropping to the infield
-			Vector2(-230, -215), Vector2(-75, -227), Vector2(80, -203), Vector2(230, -221),  # rung 1
-			Vector2(282, -180),                      # hairpin right
-			Vector2(230, -139), Vector2(80, -133), Vector2(-75, -157), Vector2(-230, -151),  # rung 2
-			Vector2(-282, -110),                     # hairpin left
-			Vector2(-230, -69), Vector2(-75, -87), Vector2(80, -63), Vector2(230, -81),      # rung 3
-			Vector2(282, -40),                       # hairpin right
-			Vector2(230, 1), Vector2(80, 7), Vector2(-75, -17), Vector2(-230, -11),          # rung 4
-			Vector2(-282, 30),                       # hairpin left
-			Vector2(-230, 71), Vector2(-75, 53), Vector2(80, 77), Vector2(230, 59),          # rung 5
-			Vector2(282, 100),                       # hairpin right
-			Vector2(230, 141), Vector2(80, 147), Vector2(-75, 123), Vector2(-230, 129),      # rung 6
-			Vector2(-282, 170),                      # hairpin left
-			Vector2(-230, 211), Vector2(-75, 193), Vector2(80, 217), Vector2(230, 199),      # rung 7
-			Vector2(282, 240),                       # hairpin right
-			Vector2(230, 281), Vector2(80, 287), Vector2(-75, 263), Vector2(-230, 269),      # rung 8
-			Vector2(-285, 311),                      # final hairpin home
+			Vector2(-185, 342), Vector2(-90, 347), Vector2(60, 349), Vector2(180, 345),  # start/finish straight
+			Vector2(285, 325), Vector2(342, 262),    # turn 1, fast right
+			Vector2(290, 192), Vector2(347, 123),    # esses climbing the east side
+			Vector2(295, 55), Vector2(350, -14),
+			Vector2(315, -100), Vector2(350, -190),  # flat-out kinks
+			Vector2(298, -272), Vector2(198, -325),  # sweeping arc onto the top
+			Vector2(60, -345), Vector2(-75, -338), Vector2(-168, -352),  # top straight, kinked
+			Vector2(-272, -300),                     # wide hairpin
+			Vector2(-126, -205), Vector2(-10, -168), # diagonal blast into the infield
+			Vector2(95, -200), Vector2(168, -136),   # flick right
+			Vector2(184, -58), Vector2(126, 11),     # carousel, long 200° right
+			Vector2(37, 21), Vector2(-26, -37),
+			Vector2(-136, -63), Vector2(-210, -11),  # ess out to the west
+			Vector2(-289, 21), Vector2(-315, 100), Vector2(-257, 158),  # western lobe
+			Vector2(-147, 194), Vector2(-32, 147),   # infield weave, outbound
+			Vector2(84, 194), Vector2(178, 147),
+			Vector2(252, 210),                       # turnaround
+			Vector2(158, 278), Vector2(32, 262),     # infield weave, home
+			Vector2(-95, 281), Vector2(-185, 264),
+			Vector2(-230, 303),                      # final hairpin onto the straight
 		],
 	},
 ]
