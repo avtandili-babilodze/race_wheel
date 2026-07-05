@@ -10,7 +10,7 @@ class TrackPreview:
 
 	func _init(track_points: Array) -> void:
 		points = track_points
-		custom_minimum_size = Vector2(180, 130)
+		custom_minimum_size = Vector2(160, 115)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		resized.connect(queue_redraw)
 
@@ -137,7 +137,7 @@ func _ready() -> void:
 		car_row.add_child(_make_car_card(i, car_group))
 
 	var cards := HBoxContainer.new()
-	cards.add_theme_constant_override("separation", 16)
+	cards.add_theme_constant_override("separation", 12)
 	cards.alignment = BoxContainer.ALIGNMENT_CENTER
 	vbox.add_child(cards)
 
@@ -227,7 +227,7 @@ func _make_card(index: int) -> Button:
 	var track: Dictionary = TrackData.TRACKS[index]
 
 	var card := Button.new()
-	card.custom_minimum_size = Vector2(232, 300)
+	card.custom_minimum_size = Vector2(200, 270)
 	card.add_theme_stylebox_override("normal",
 		_card_style(Color(0.24, 0.27, 0.33), Color(0.12, 0.14, 0.19)))
 	card.add_theme_stylebox_override("hover",
@@ -244,7 +244,7 @@ func _make_card(index: int) -> Button:
 
 	var name_label := Label.new()
 	name_label.text = track.name
-	name_label.add_theme_font_size_override("font_size", 22)
+	name_label.add_theme_font_size_override("font_size", 20)
 	name_label.add_theme_color_override("font_color", Color(0.96, 0.96, 0.98))
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(name_label)

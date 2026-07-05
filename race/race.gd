@@ -103,7 +103,7 @@ func _build_environment() -> void:
 	var ground := StaticBody3D.new()
 	var ground_col := CollisionShape3D.new()
 	var ground_shape := BoxShape3D.new()
-	ground_shape.size = Vector3(800, 1, 800)
+	ground_shape.size = Vector3(1100, 1, 1100)
 	ground_col.shape = ground_shape
 	ground_col.position = Vector3(0, -0.5, 0)
 	ground.add_child(ground_col)
@@ -111,11 +111,11 @@ func _build_environment() -> void:
 	var grass_mat := StandardMaterial3D.new()
 	grass_mat.albedo_texture = _noise_tex(
 		0.008, Color(0.15, 0.31, 0.12), Color(0.22, 0.4, 0.16))
-	grass_mat.uv1_scale = Vector3(80, 80, 1)
+	grass_mat.uv1_scale = Vector3(110, 110, 1)
 	grass_mat.roughness = 1.0
 	var ground_mesh := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(800, 800)
+	plane.size = Vector2(1100, 1100)
 	ground_mesh.mesh = plane
 	ground_mesh.material_override = grass_mat
 	ground.add_child(ground_mesh)
@@ -567,18 +567,28 @@ func _build_mountains() -> void:
 		var tangent := Vector3(-sin(angle), 0, cos(angle))
 		var peaks := 1 + rng.randi() % 3
 		for p in peaks:
-			var mi := MeshInstance3D.new()
-			mi.mesh = variants[rng.randi() % variants.size()]
-			mi.material_override = mat
+			var variant: ArrayMesh = variants[rng.randi() % variants.size()]
 			var height := rng.randf_range(45.0, 80.0)
 			if p > 0:
 				height *= rng.randf_range(0.5, 0.75)
 			var spread := rng.randf_range(1.3, 1.9)
-			mi.scale = Vector3(height * spread, height, height * spread)
 			var slide := 0.0
 			if p > 0:
 				slide = rng.randf_range(-1.6, 1.6) * height
-			mi.position = base + tangent * slide + Vector3(0, -1.5, 0)
+			var pos := base + tangent * slide + Vector3(0, -1.5, 0)
+			# Big circuits reach the horizon ring: slide a peak outward until
+			# its footprint (noise widens the base up to ~40%) clears the
+			# road, and drop it if there is no room left on the ground plane.
+			var clearance := height * spread * 1.4 + 12.0
+			while _distance_to_track(pos) < clearance and pos.length() < 520.0:
+				pos += pos.normalized() * 15.0
+			if _distance_to_track(pos) < clearance:
+				continue
+			var mi := MeshInstance3D.new()
+			mi.mesh = variant
+			mi.material_override = mat
+			mi.scale = Vector3(height * spread, height, height * spread)
+			mi.position = pos
 			mi.rotation.y = rng.randf() * TAU
 			add_child(mi)
 
@@ -620,9 +630,9 @@ func _build_trees() -> void:
 
 	var placed := 0
 	var attempts := 0
-	while placed < 70 and attempts < 500:
+	while placed < 100 and attempts < 800:
 		attempts += 1
-		var pos := Vector3(rng.randf_range(-240, 240), 0, rng.randf_range(-240, 240))
+		var pos := Vector3(rng.randf_range(-340, 340), 0, rng.randf_range(-340, 340))
 		if _distance_to_track(pos) < TRACK_WIDTH / 2.0 + 10.0:
 			continue
 		var near_stand := false
@@ -691,9 +701,9 @@ func _build_bushes() -> void:
 		variants.append(_blob_mesh(rng.randi(), 0.3))
 	var placed := 0
 	var attempts := 0
-	while placed < 90 and attempts < 600:
+	while placed < 120 and attempts < 900:
 		attempts += 1
-		var pos := Vector3(rng.randf_range(-230, 230), 0, rng.randf_range(-230, 230))
+		var pos := Vector3(rng.randf_range(-340, 340), 0, rng.randf_range(-340, 340))
 		if _distance_to_track(pos) < TRACK_WIDTH / 2.0 + 8.5:
 			continue
 		var near_stand := false
