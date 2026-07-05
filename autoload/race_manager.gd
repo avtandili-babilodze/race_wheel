@@ -6,6 +6,7 @@ signal lap_completed(time: float, is_best: bool)
 const NUM_CHECKPOINTS := 6
 
 var selected_track := 0
+var selected_car := 0
 var running := false
 var current_lap_time := 0.0
 var lap_count := 0
@@ -22,6 +23,9 @@ func _process(delta: float) -> void:
 func select_track(index: int) -> void:
 	selected_track = index
 	_load_best_time()
+
+func select_car(index: int) -> void:
+	selected_car = index
 
 func start_race() -> void:
 	running = true

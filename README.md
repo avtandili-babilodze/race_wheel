@@ -33,12 +33,14 @@ project uses the GL Compatibility renderer, so it runs on modest hardware.
 
 ## Gameplay
 
-- The main menu lets you pick one of three tracks — **Grand Circuit** (a
-  GP-style lap with sweepers, esses, and a chicane), **Speedway Oval**
-  (flat-out), and **Switchback Snake** (tight hairpins) — each shown with
-  its outline and your best time. Press **Esc** in a race to return.
+- The main menu lets you pick a car and a track. Cars range from the
+  **Thunder V8** muscle car to the **Apex F1** single-seater, each with its
+  own speed, grip, and handling. Tracks range from the flat-out **Speedway
+  Oval** to the 2.5 km endurance **Marathon GP**, each shown with its
+  outline and your best time. Press **Esc** in a race to return.
 - Every track is generated from a list of centerline points in
-  `scripts/track_data.gd`; add a new entry there to add a new track.
+  `race/track_data.gd`, and every car from a spec in `car/car_data.gd`;
+  add an entry there to add a new track or car.
 - A 3-2-1 countdown starts the race; the lap timer begins on **GO!**
 - Six invisible checkpoint gates around the track must be crossed in order,
   so cutting the course or reversing over the line doesn't count.
@@ -57,8 +59,10 @@ race/
   checkpoint.gd    Checkpoint gate trigger
 car/
   car.tscn/.gd     Player vehicle: physics, input, chase camera
+  car_data.gd      Car catalog: tuning, colors, and menu profile per model
+  car_body.gd      Procedural 3D bodies for each car model
 ui/
-  menu/            Track selection menu (startup scene)
+  menu/            Car and track selection menu (startup scene)
   hud/             Lap timer / best time overlay
 
 Folders are organized by feature — each scene lives beside its script, so a

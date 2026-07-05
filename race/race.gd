@@ -759,6 +759,7 @@ func _build_start_line(parent: Node3D) -> void:
 
 func _spawn_car() -> void:
 	car = preload("res://car/car.tscn").instantiate()
+	car.spec = CarData.CARS[RaceManager.selected_car]
 	# A few metres past the start line, nose along the track.
 	var xf := _track_transform(5.0)
 	car.basis = xf.basis
