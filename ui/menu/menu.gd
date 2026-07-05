@@ -10,8 +10,9 @@ class TrackPreview:
 
 	func _init(track_points: Array) -> void:
 		points = track_points
-		custom_minimum_size = Vector2(230, 160)
+		custom_minimum_size = Vector2(180, 130)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
 
 	func _draw() -> void:
 		var baked := TrackData.build_curve2d(points).get_baked_points()
@@ -35,8 +36,6 @@ class TrackPreview:
 		draw_circle(screen_pts[0], 2.6, Color.WHITE)
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
-
 	var gradient := Gradient.new()
 	gradient.set_color(0, Color(0.11, 0.13, 0.18))
 	gradient.set_color(1, Color(0.04, 0.05, 0.08))
@@ -91,7 +90,7 @@ func _ready() -> void:
 	vbox.add_child(spacer)
 
 	var cards := HBoxContainer.new()
-	cards.add_theme_constant_override("separation", 26)
+	cards.add_theme_constant_override("separation", 16)
 	cards.alignment = BoxContainer.ALIGNMENT_CENTER
 	vbox.add_child(cards)
 
@@ -130,7 +129,7 @@ func _make_card(index: int) -> Button:
 	var track: Dictionary = TrackData.TRACKS[index]
 
 	var card := Button.new()
-	card.custom_minimum_size = Vector2(290, 330)
+	card.custom_minimum_size = Vector2(232, 300)
 	card.add_theme_stylebox_override("normal",
 		_card_style(Color(0.24, 0.27, 0.33), Color(0.12, 0.14, 0.19)))
 	card.add_theme_stylebox_override("hover",
@@ -141,8 +140,14 @@ func _make_card(index: int) -> Button:
 		_card_style(ACCENT.lightened(0.2), Color(0.15, 0.17, 0.22)))
 	card.pressed.connect(_start_track.bind(index))
 
+	# Anchored full-rect with inset offsets: the stylebox content margin
+	# only applies to the button's own text, not to child controls.
 	var content := VBoxContainer.new()
 	content.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content.offset_left = 14
+	content.offset_top = 12
+	content.offset_right = -14
+	content.offset_bottom = -12
 	content.add_theme_constant_override("separation", 6)
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(content)
@@ -151,7 +156,7 @@ func _make_card(index: int) -> Button:
 
 	var name_label := Label.new()
 	name_label.text = track.name
-	name_label.add_theme_font_size_override("font_size", 25)
+	name_label.add_theme_font_size_override("font_size", 22)
 	name_label.add_theme_color_override("font_color", Color(0.96, 0.96, 0.98))
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content.add_child(name_label)

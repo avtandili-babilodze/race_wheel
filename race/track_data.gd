@@ -55,4 +55,46 @@ const TRACKS := [
 			Vector2(-155, -60), Vector2(-155, 30),  # left side climb
 		],
 	},
+	{
+		# Nordschleife-inspired: long, narrow-ish loop of relentless esses
+		# with one big straight home.
+		"name": "Nürburgring",
+		"points": [
+			Vector2(-30, 150), Vector2(80, 150),    # Döttinger Höhe straight
+			Vector2(160, 140), Vector2(200, 95),    # Tiergarten sweep
+			Vector2(165, 55), Vector2(205, 10),     # Hatzenbach esses
+			Vector2(160, -30), Vector2(195, -80),   # Flugplatz kinks
+			Vector2(135, -115),                     # Hohe Acht
+			Vector2(85, -85), Vector2(45, -125),    # Brünnchen wiggles
+			Vector2(-15, -95), Vector2(-60, -135),  # Pflanzgarten
+			Vector2(-120, -105),                    # Bergwerk sweeper
+			Vector2(-95, -55),                      # Karussell hook
+			Vector2(-150, -20),
+			Vector2(-120, 25),                      # Wehrseifen switchback
+			Vector2(-185, 60),                      # Breidscheid hairpin
+			Vector2(-215, 110),                     # far corner
+			Vector2(-150, 145),                     # back onto the straight
+		],
+	},
+	{
+		# The endurance monster: a fast outer ring feeding four stacked
+		# back-and-forth rungs. Longest lap in the game.
+		"name": "Marathon GP",
+		"points": [
+			Vector2(-140, 190), Vector2(30, 195), Vector2(140, 190),  # front straight
+			Vector2(205, 150),                       # turn 1
+			Vector2(210, 20), Vector2(208, -95), Vector2(205, -150),  # long right-side blast
+			Vector2(150, -195), Vector2(95, -192), Vector2(0, -190), Vector2(-100, -195),  # top straight
+			Vector2(-155, -160),                     # drop into the rungs
+			Vector2(-60, -120), Vector2(80, -115),   # rung 1, outbound
+			Vector2(150, -80),                       # hairpin right
+			Vector2(80, -45), Vector2(-60, -45),     # rung 2, back
+			Vector2(-132, -58),
+			Vector2(-185, -12),                      # hairpin left
+			Vector2(-132, 33), Vector2(80, 25),      # rung 3, outbound
+			Vector2(150, 60),                        # hairpin right
+			Vector2(80, 95), Vector2(-60, 95),       # rung 4, back
+			Vector2(-150, 130),                      # sweep home
+		],
+	},
 ]
